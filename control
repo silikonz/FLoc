@@ -1,0 +1,9 @@
+Package: me.fmfn
+Name: fmfn
+Version: 0.1
+Architecture: iphoneos-arm
+Description: Notify via com.apple.findmy when FMF is being activated
+Maintainer: me
+Author: me
+Section: Tweaks
+Depends: mobilesubstrate (>= 0.9.5000)
