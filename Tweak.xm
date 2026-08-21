@@ -1,5 +1,24 @@
 #import <Foundation/Foundation.h>
-#import <UserNotifications/UserNotifications.h>
+
+
+@interface BBBulletinRequest : NSObject
+@property (nonatomic, copy) NSString *title;
+@property (nonatomic, copy) NSString *message;
+@property (nonatomic, copy) NSString *sectionID;
+@property (nonatomic, copy) NSString *bulletinID;
+@property (nonatomic, copy) NSString *recordID;
+@property (nonatomic, copy) NSDate *date;
+@property (nonatomic, assign) BOOL clearable;
+@end
+
+@interface BBServer : NSObject
+- (void)publishBulletin:(BBBulletinRequest *)bulletin destinations:(unsigned long long)destinations;
+@end
+
+static BBServer *_fmfn_bbServerInstance = nil;
+
+
+
 
 #define kFMFNDarwinNotifyFriends "_fmfn.notify.findmyfriends"
 // #define kFMFNDarwinNotifyDevice "_fmfn.notify.findmydevice"
@@ -67,17 +86,21 @@ static NSDate *_fmfn_lastAlert = nil;
 %group SpringBoard
 
 static void _fmfn_showNotification(NSString *title, NSString *body) {
-    UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
-    content.title = title;
-    content.body = body;
-    content.sound = [UNNotificationSound defaultSound];
+    if (!_fmfn_bbServerInstance) return;
 
-    [content setValue:@"com.apple.findmy" forKey:@"defaultActionBundleIdentifier"];
+    BBBulletinRequest *bulletin = [[%c(BBBulletinRequest) alloc] init];
+    bulletin.title = title;
+    bulletin.message = body;
+    bulletin.sectionID = @"com.apple.findmy"; // Native icon & title spoof
+    bulletin.date = [NSDate date];
+    bulletin.clearable = YES;
 
-    UNTimeIntervalNotificationTrigger *trigger = [UNTimeIntervalNotificationTrigger triggerWithTimeInterval:0.1 repeats:NO];
-    UNNotificationRequest *request = [UNNotificationRequest requestWithIdentifier:[[NSUUID UUID] UUIDString] content:content trigger:trigger];
+    NSString *uuid = [[NSUUID UUID] UUIDString];
+    bulletin.bulletinID = uuid;
+    bulletin.recordID = uuid;
 
-    [[UNUserNotificationCenter currentNotificationCenter] addNotificationRequest:request withCompletionHandler:nil];
+    // Destinations: 15 = Banner + LockScreen + Notification Center
+    [_fmfn_bbServerInstance publishBulletin:bulletin destinations:15];
 }
 
 static void _fmfn_onFindMyFriendsNotification(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
@@ -91,6 +114,20 @@ static void _fmfn_onFindMyDeviceNotification(CFNotificationCenterRef center, voi
 */
 
 %hook SpringBoard
+
+
+%hook BBServer
+- (id)initWithQueue:(id)queue {
+    _fmfn_bbServerInstance = %orig;
+    return _fmfn_bbServerInstance;
+}
+
+- (id)initWithQueue:(id)queue dataProviderManager:(id)manager {
+    _fmfn_bbServerInstance = %orig;
+    return _fmfn_bbServerInstance;
+}
+%end
+
 
 - (void)applicationDidFinishLaunching:(id)application {
     %orig;
