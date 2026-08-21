@@ -10,5 +10,6 @@ TWEAK_NAME = fmfn
 
 fmfn_FILES = Tweak.xm
 fmfn_CFLAGS = -fobjc-arc
+fmfn_PRIVATE_FRAMEWORKS = BulletinBoard
 
 include $(THEOS_MAKE_PATH)/tweak.mk
