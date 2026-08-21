@@ -12,6 +12,7 @@
 @end
 
 @interface BBServer : NSObject
+@property (nonatomic, readonly) dispatch_queue_t queue;
 - (void)publishBulletin:(BBBulletinRequest *)bulletin destinations:(unsigned long long)destinations;
 @end
 
@@ -91,7 +92,7 @@ static void _fmfn_showNotification(NSString *title, NSString *body) {
     BBBulletinRequest *bulletin = [[%c(BBBulletinRequest) alloc] init];
     bulletin.title = title;
     bulletin.message = body;
-    bulletin.sectionID = @"com.apple.findmy"; // Native icon & title spoof
+    bulletin.sectionID = @"com.apple.findmy";
     bulletin.date = [NSDate date];
     bulletin.clearable = YES;
 
@@ -99,8 +100,9 @@ static void _fmfn_showNotification(NSString *title, NSString *body) {
     bulletin.bulletinID = uuid;
     bulletin.recordID = uuid;
 
-    // Destinations: 15 = Banner + LockScreen + Notification Center
-    [_fmfn_bbServerInstance publishBulletin:bulletin destinations:15];
+    dispatch_async(_fmfn_bbServerInstance.queue, ^{
+        [_fmfn_bbServerInstance publishBulletin:bulletin destinations:15];
+    });
 }
 
 static void _fmfn_onFindMyFriendsNotification(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
