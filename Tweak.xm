@@ -113,9 +113,6 @@ static void _fmfn_onFindMyDeviceNotification(CFNotificationCenterRef center, voi
 }
 */
 
-%hook SpringBoard
-
-
 %hook BBServer
 - (id)initWithQueue:(id)queue {
     _fmfn_bbServerInstance = %orig;
@@ -127,6 +124,8 @@ static void _fmfn_onFindMyDeviceNotification(CFNotificationCenterRef center, voi
     return _fmfn_bbServerInstance;
 }
 %end
+
+%hook SpringBoard
 
 
 - (void)applicationDidFinishLaunching:(id)application {
