@@ -4,6 +4,7 @@ extern dispatch_queue_t __BBServerQueue;
 
 @interface BBBulletinRequest : NSObject
 @property (nonatomic, copy) NSString *title;
+@property (nonatomic, copy) NSString *subtitle;
 @property (nonatomic, copy) NSString *message;
 @property (nonatomic, copy) NSString *sectionID;
 @property (nonatomic, copy) NSString *bulletinID;
@@ -86,12 +87,13 @@ static NSDate *_fmfn_lastAlert = nil;
 
 %group SpringBoard
 
-static void _fmfn_showNotification(NSString *title, NSString *body) {
+static void _fmfn_showNotification(NSString *title, NSString *subtitle, NSString *message) {
     if (!_fmfn_bbServerInstance) return;
 
     BBBulletinRequest *bulletin = [[%c(BBBulletinRequest) alloc] init];
     bulletin.title = title;
-    bulletin.message = body;
+    bulletin.subtitle = subtitle;
+    bulletin.message = message;
     bulletin.sectionID = @"com.apple.findmy";
     bulletin.date = [NSDate date];
     bulletin.clearable = YES;
@@ -106,12 +108,12 @@ static void _fmfn_showNotification(NSString *title, NSString *body) {
 }
 
 static void _fmfn_onFindMyFriendsNotification(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
-    _fmfn_showNotification(@"Find My (Notifications)", @"Someone requested your location via Find My");
+    _fmfn_showNotification(@"Location Checked", @"Tweak", @"Someone you share location with checked where you are.");
 }
 
 /*
 static void _fmfn_onFindMyDeviceNotification(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
-    _fmfn_showNotification(@"Find My (Notifications)", @"Someone triggered a locate command on this device");
+    _fmfn_showNotification(@"Device Located", @"Tweak", @"A remote request retrieved this device’s location.");
 }
 */
 
