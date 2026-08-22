@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 
+extern dispatch_queue_t __BBServerQueue;
 
 @interface BBBulletinRequest : NSObject
 @property (nonatomic, copy) NSString *title;
@@ -12,8 +13,7 @@
 @end
 
 @interface BBServer : NSObject
-@property (nonatomic, readonly) dispatch_queue_t queue;
-- (void)publishBulletin:(BBBulletinRequest *)bulletin destinations:(unsigned long long)destinations;
+- (void)publishBulletinRequest:(BBBulletinRequest *)bulletin destinations:(unsigned long long)destinations;
 @end
 
 static BBServer *_fmfn_bbServerInstance = nil;
@@ -100,8 +100,8 @@ static void _fmfn_showNotification(NSString *title, NSString *body) {
     bulletin.bulletinID = uuid;
     bulletin.recordID = uuid;
 
-    dispatch_async(_fmfn_bbServerInstance.queue, ^{
-        [_fmfn_bbServerInstance publishBulletin:bulletin destinations:15];
+    dispatch_async(__BBServerQueue, ^{
+        [_fmfn_bbServerInstance publishBulletinRequest:bulletin destinations:15];
     });
 }
 
