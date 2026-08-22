@@ -116,14 +116,8 @@ static void _fmfn_onFindMyDeviceNotification(CFNotificationCenterRef center, voi
 */
 
 %hook BBServer
-- (id)initWithQueue:(id)queue {
-    _fmfn_bbServerInstance = %orig;
-    return _fmfn_bbServerInstance;
-}
-
-- (id)initWithQueue:(id)queue dataProviderManager:(id)manager {
-    _fmfn_bbServerInstance = %orig;
-    return _fmfn_bbServerInstance;
+- (id)initWithQueue:(id)arg1 {
+    return _fmfn_bbServerInstance = %orig;
 }
 %end
 
