@@ -1,169 +1,37 @@
-#import <Foundation/Foundation.h>
+#import <CoreLocation/CoreLocation.h>
 
-extern dispatch_queue_t __BBServerQueue;
+__attribute__((used)) static volatile double kLat = 37.32383276483316;
+__attribute__((used)) static volatile double kLon = -122.1508491739245;
 
-@interface BBBulletinRequest : NSObject
-@property (nonatomic, copy) NSString *title;
-@property (nonatomic, copy) NSString *subtitle;
-@property (nonatomic, copy) NSString *message;
-@property (nonatomic, copy) NSString *sectionID;
-@property (nonatomic, copy) NSString *bulletinID;
-@property (nonatomic, copy) NSString *recordID;
-@property (nonatomic, copy) NSDate *date;
-@property (nonatomic, assign) BOOL clearable;
-@end
-
-@interface BBServer : NSObject
-- (void)publishBulletinRequest:(BBBulletinRequest *)bulletin destinations:(unsigned long long)destinations;
-@end
-
-static BBServer *_fmfn_bbServerInstance = nil;
-
-
-
-
-#define kFMFNDarwinNotifyFriends "_fmfn.notify.findmyfriends"
-// #define kFMFNDarwinNotifyDevice "_fmfn.notify.findmydevice"
-
-
-static NSString *_fmfn_lastCommandId = @"";
-static NSDate *_fmfn_lastAlert = nil;
-
-%group fmflocatord
-
-%hook FindBaseServiceProvider
-
-- (void)sendCurrentLocation:(id)location isFinished:(BOOL)finished forCmd:(NSDictionary *)command withReason:(long long)reason andAccuracyChange:(double)accuracy {
-    %orig;
-
-    NSString *commandId = [command objectForKey:@"id"];
-    
-    if (![commandId isEqualToString:_fmfn_lastCommandId] && (!_fmfn_lastAlert || [_fmfn_lastAlert timeIntervalSinceNow] < -60)) {
-        _fmfn_lastCommandId = commandId;
-        _fmfn_lastAlert = [NSDate date];
-
-        CFNotificationCenterPostNotification(
-            CFNotificationCenterGetDarwinNotifyCenter(),
-            CFSTR(kFMFNDarwinNotifyFriends),
-            NULL, NULL, true
-        );
-    }
+static CLLocation *fake(void) {
+    return [[CLLocation alloc] initWithCoordinate:CLLocationCoordinate2DMake(kLat, kLon)
+                                         altitude:10 horizontalAccuracy:5 verticalAccuracy:5
+                                        timestamp:[NSDate date]];
 }
 
+static void deliver(CLLocationManager *m) {
+    id<CLLocationManagerDelegate> d = m.delegate;
+    if ([d respondsToSelector:@selector(locationManager:didUpdateLocations:)])
+        [d locationManager:m didUpdateLocations:@[fake()]];
+}
+
+static void grant(CLLocationManager *m) {
+    id<CLLocationManagerDelegate> d = m.delegate;
+    if ([d respondsToSelector:@selector(locationManager:didChangeAuthorizationStatus:)])
+        [d locationManager:m didChangeAuthorizationStatus:kCLAuthorizationStatusAuthorizedAlways];
+    if ([d respondsToSelector:@selector(locationManagerDidChangeAuthorization:)])
+        [d locationManagerDidChangeAuthorization:m];
+}
+
+%hook CLLocationManager
++ (CLAuthorizationStatus)authorizationStatus   { return kCLAuthorizationStatusAuthorizedAlways; }
++ (BOOL)locationServicesEnabled                { return YES; }
+- (CLAuthorizationStatus)authorizationStatus   { return kCLAuthorizationStatusAuthorizedAlways; }
+- (CLAccuracyAuthorization)accuracyAuthorization { return CLAccuracyAuthorizationFullAccuracy; }
+- (CLLocation *)location                       { return fake(); }
+
+- (void)requestWhenInUseAuthorization { grant(self); }
+- (void)requestAlwaysAuthorization    { grant(self); }
+- (void)requestLocation               { deliver(self); }
+- (void)startUpdatingLocation         { %orig; deliver(self); }
 %end
-
-%end
-
-
-
-/*
-%group findmydeviced
-
-%hook FMDCommandHandlerLocate
-
-- (void)_sendCurrentLocation:(id)location isFinished:(BOOL)finished forCmd:(NSDictionary *)command withReason:(long long)reason andAccuracyChange:(double)accuracy {
-    %orig;
-
-    NSString *commandId = [command objectForKey:@"id"];
-
-    if (![commandId isEqualToString:_fmfn_lastCommandId] && (!_fmfn_lastAlert || [_fmfn_lastAlert timeIntervalSinceNow] < -60)) {
-        _fmfn_lastCommandId = commandId;
-        _fmfn_lastAlert = [NSDate date];
-
-        CFNotificationCenterPostNotification(
-            CFNotificationCenterGetDarwinNotifyCenter(),
-            CFSTR(kFMFNDarwinNotifyDevice),
-            NULL, NULL, true
-        );
-    }
-}
-
-%end
-
-%end // %group findmydeviced
-*/
-
-
-
-%group SpringBoard
-
-static void _fmfn_showNotification(NSString *title, NSString *subtitle, NSString *message) {
-    if (!_fmfn_bbServerInstance) return;
-
-    BBBulletinRequest *bulletin = [[%c(BBBulletinRequest) alloc] init];
-    bulletin.title = title;
-    bulletin.subtitle = subtitle;
-    bulletin.message = message;
-    bulletin.sectionID = @"com.apple.findmy";
-    bulletin.date = [NSDate date];
-    bulletin.clearable = YES;
-
-    NSString *uuid = [[NSUUID UUID] UUIDString];
-    bulletin.bulletinID = uuid;
-    bulletin.recordID = uuid;
-
-    dispatch_async(__BBServerQueue, ^{
-        [_fmfn_bbServerInstance publishBulletinRequest:bulletin destinations:15];
-    });
-}
-
-static void _fmfn_onFindMyFriendsNotification(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
-    _fmfn_showNotification(@"Location Checked", @"Tweak", @"Someone you share location with checked where you are.");
-}
-
-/*
-static void _fmfn_onFindMyDeviceNotification(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
-    _fmfn_showNotification(@"Device Located", @"Tweak", @"A remote request retrieved this device’s location.");
-}
-*/
-
-%hook BBServer
-- (id)initWithQueue:(id)arg1 {
-    return _fmfn_bbServerInstance = %orig;
-}
-%end
-
-%hook SpringBoard
-
-
-- (void)applicationDidFinishLaunching:(id)application {
-    %orig;
-
-    CFNotificationCenterAddObserver(
-        CFNotificationCenterGetDarwinNotifyCenter(), NULL,
-        &_fmfn_onFindMyFriendsNotification,
-        CFSTR(kFMFNDarwinNotifyFriends),
-        NULL, CFNotificationSuspensionBehaviorDeliverImmediately
-    );
-
-    /*
-    CFNotificationCenterAddObserver(
-        CFNotificationCenterGetDarwinNotifyCenter(), NULL,
-        &_fmfn_onFindMyDeviceNotification,
-        CFSTR(kFMFNDarwinNotifyDevice),
-        NULL, CFNotificationSuspensionBehaviorDeliverImmediately
-    );
-    */
-}
-
-%end
-
-%end
-
-
-
-%ctor {
-    NSString *processName = [[NSProcessInfo processInfo] processName];
-
-    if ([processName isEqualToString:@"SpringBoard"]) {
-        %init(SpringBoard);
-    } 
-    else if ([processName isEqualToString:@"fmflocatord"]) {
-        %init(fmflocatord);
-    }
-    /*
-    else if ([processName isEqualToString:@"findmydeviced"]) {
-        %init(findmydeviced);
-    }
-    */
-}
