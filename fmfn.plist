@@ -1,6 +1,5 @@
 { 
     Filter = { 
-        Executables = ( "fmflocatord" ); 
-        Bundles = ( "com.apple.springboard" );
+        Bundles = ( "test.testapp" );
     }; 
 }
