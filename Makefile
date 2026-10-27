@@ -1,15 +1,15 @@
-TARGET = iphone:clang:latest:15.0
+TARGET = iphone:clang:latest:14.0
 
 ARCHS = arm64 arm64e
 
-INSTALL_TARGET_PROCESSES = SpringBoard
+#INSTALL_TARGET_PROCESSES = SpringBoard
 
 include $(THEOS)/makefiles/common.mk
 
-TWEAK_NAME = fmfn
+TWEAK_NAME = FLoc
 
-fmfn_FILES = Tweak.xm
-fmfn_CFLAGS = -fobjc-arc
-fmfn_PRIVATE_FRAMEWORKS = BulletinBoard
+FLoc_FILES = Tweak.xm
+FLoc_FRAMEWORKS = CoreLocation
+FLoc_CFLAGS = -fobjc-arc
 
 include $(THEOS_MAKE_PATH)/tweak.mk
