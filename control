@@ -2,7 +2,7 @@ Package: me.floc
 Name: FLoc
 Version: 0.1
 Architecture: iphoneos-arm
-Description: Hold location
+Description: Hold a particular location
 Maintainer: me
 Author: me
 Section: Tweaks
