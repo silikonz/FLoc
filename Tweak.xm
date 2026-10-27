@@ -15,6 +15,8 @@ static void deliver(CLLocationManager *m) {
         [d locationManager:m didUpdateLocations:@[fake()]];
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 static void grant(CLLocationManager *m) {
     id<CLLocationManagerDelegate> d = m.delegate;
     if ([d respondsToSelector:@selector(locationManager:didChangeAuthorizationStatus:)])
@@ -22,6 +24,7 @@ static void grant(CLLocationManager *m) {
     if ([d respondsToSelector:@selector(locationManagerDidChangeAuthorization:)])
         [d locationManagerDidChangeAuthorization:m];
 }
+#pragma clang diagnostic pop
 
 %hook CLLocationManager
 + (CLAuthorizationStatus)authorizationStatus   { return kCLAuthorizationStatusAuthorizedAlways; }
@@ -33,5 +36,9 @@ static void grant(CLLocationManager *m) {
 - (void)requestWhenInUseAuthorization { grant(self); }
 - (void)requestAlwaysAuthorization    { grant(self); }
 - (void)requestLocation               { deliver(self); }
-- (void)startUpdatingLocation         { %orig; deliver(self); }
+
+- (void)startUpdatingLocation {
+    %orig;
+    deliver(self);
+}
 %end
